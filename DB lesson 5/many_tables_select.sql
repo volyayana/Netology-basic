@@ -67,8 +67,10 @@ select a.name
   join tracks t on a.id = t.album_id 
   group by a.name
  having count(*) = (
-  select min(cnt) from (
     select count(*) cnt
       from tracks t
-     group by album_id) track_count
+     group by album_id
+     order by 1
+     limit 1
  );
+ 
