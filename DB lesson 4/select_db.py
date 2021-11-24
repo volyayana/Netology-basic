@@ -49,7 +49,9 @@ VALUES (1, 'Двадцать четыре лёгкие пьесы для фор�
        (6, 'Teatro d''ira', 2021), 
        (7, 'Там на Кубани', 1992), 
        (8, 'Songs Of Our Soil', 1959),
-       (9, 'Il ballo della vita', 2018);""")
+       (9, 'Il ballo della vita', 2018),
+       (10, 'VENT''ANNI', 2019),
+       (11, 'Mixed album', 2020);""")
 
 connection.execute("""INSERT INTO albums_artists (album_id, artist_id)
 VALUES (1, 1), 
@@ -60,7 +62,10 @@ VALUES (1, 1),
        (6, 6), 
        (7, 7), 
        (8, 8),
-       (9, 6);""")
+       (9, 6),
+       (10, 6),
+       (11, 1), 
+       (11, 3);""")
 
 connection.execute("""INSERT INTO tracks (id, name, duration, album_id)
 VALUES (1, 'Зимнее утро', 70, 1), 
@@ -78,7 +83,8 @@ VALUES (1, 'Зимнее утро', 70, 1),
        (13, 'Ой, там в саду', 310, 7),
        (14, 'Як служив я в пану', 285, 7), 
        (15, 'It Could Be You', 218, 8), 
-       (16, 'My Grandfather''s Clock', 301, 8);""")
+       (16, 'My Grandfather''s Clock', 301, 8),
+       (17, 'VENT''ANNI', 253, 10);""")
 
 connection.execute("""INSERT INTO collections (id, name, year_of_issue)
 VALUES (1, 'Сборник Петра Чайковского', 1964), 
