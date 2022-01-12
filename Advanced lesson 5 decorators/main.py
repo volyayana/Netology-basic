@@ -2,7 +2,7 @@ import datetime
 import os
 import requests
 
-LOG_FILE = os.path.join(os.getcwd(), 'log')
+LOG_FILE = os.path.join(os.getcwd(), 'log.csv')
 
 def log_decor_param(log_path):
     def log_decor(old_function):
@@ -11,13 +11,13 @@ def log_decor_param(log_path):
             result = old_function(*args, **kwargs)
             with open(log_path, 'a', encoding='UTF-8') as f:
                 if os.stat(log_path).st_size == 0:
-                    f.writelines('exec_date,function_name,args,kwargs,function_result\n')
-                f.writelines(f'{exec_time},{old_function.__name__},{args},{kwargs},{result}\n')
+                    f.writelines('exec_date;function_name;args;kwargs;function_result\n')
+                f.writelines(f'{exec_time};{old_function.__name__};{args};{kwargs};{result}\n')
             return result
         return new_function
     return log_decor
 
-@log_decor_param(LOG_FILE+'1')
+@log_decor_param(LOG_FILE)
 def get_smartest_hero(*hero_list):
     hero_dict_list = []
     for hero in hero_list:
