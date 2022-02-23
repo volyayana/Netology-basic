@@ -1,76 +1,10 @@
-from random import randrange
-import os
-import sqlalchemy
 import re
 import datetime
-
 import vk_api
-from vk_api.longpoll import VkLongPoll, VkEventType
-
-with open(os.path.join(os.getcwd(), 'vktoken_post.txt'), 'r') as file_object:
-    token_club = file_object.read().strip()
-with open(os.path.join(os.getcwd(), 'vktoken_get.txt'), 'r') as file_object:
-    token_user = file_object.read().strip()
-
-
-class Database:
-    def __init__(self):
-        self.engine = sqlalchemy.create_engine('postgresql://netol:1111@localhost:5432/netol_db')
-        self.connection = self.engine.connect()
-
-    def get_country(self, name):
-        return self.connection.execute(
-            f"SELECT max(id)"
-            f"  FROM countries c"
-            f" WHERE lower(c.name) like lower('%%{name}%%');"
-        ).fetchall()[0][0];
-
-    def get_city(self, name, country_id):
-        return self.connection.execute(
-            f"SELECT max(id)"
-            f"  FROM cities c"
-            f" WHERE lower(c.name) like lower('%%{name}%%')"
-            f"   AND country_id = {country_id};"
-        ).fetchall()[0][0];
-
-    def add_city(self, id, name, country_id):
-        return self.connection.execute(
-            f"INSERT INTO cities(id, name, country_id)"
-            f"VALUES ({id}, '{name}', {country_id});"
-        )
-
-    def add_found_users(self, user_id, found_user_id):
-        return self.connection.execute(
-            f"INSERT INTO found_users(user_id, found_user_id) "
-            f"VALUES ('{user_id}', {found_user_id});"
-        )
-
-    def check_found_users(self, user_id, found_user_id):
-        return self.connection.execute(
-            f"SELECT COUNT(*)"
-            f"  FROM found_users fu"
-            f" WHERE fu.user_id = {user_id}"
-            f"   AND fu.found_user_id = {found_user_id};"
-        ).fetchall()[0][0]
-
-    def add_to_white_list(self, user_id, found_user_id):
-        return self.connection.execute(
-            f"INSERT INTO white_lists(user_id, white_user_id) "
-            f"VALUES ({user_id}, '{found_user_id}');"
-        )
-
-    def get_white_list(self, user_id):
-        return self.connection.execute(
-            f"SELECT white_user_id "
-            f"  FROM white_lists wl"
-            f" WHERE wl.user_id = {user_id};"
-        ).fetchall()
-
-    def add_logs(self, user_id, function_name, exec_date):
-        return self.connection.execute(
-            f"INSERT INTO logs(user_id, function_name, exec_date) "
-            f"VALUES ({user_id}, '{function_name}', TIMESTAMP '{exec_date}');"
-        )
+import os
+from random import randrange
+from vk_api.longpoll import VkLongPoll
+from database import Database
 
 
 class VK:
@@ -96,6 +30,11 @@ class VK:
               'в гражданском браке': 8}
 
     def __init__(self):
+        with open(os.path.join(os.getcwd(), 'vktoken_post.txt'), 'r') as file_object:
+            token_club = file_object.read().strip()
+        with open(os.path.join(os.getcwd(), 'vktoken_get.txt'), 'r') as file_object:
+            token_user = file_object.read().strip()
+
         self.vk_club = vk_api.VkApi(token=token_club)
         self.vk_user = vk_api.VkApi(token=token_user)
         self.longpoll = VkLongPoll(self.vk_club)
@@ -196,10 +135,10 @@ class VK:
                 attachment += f'photo{photo["owner_id"]}_{photo["id"]},'
         self.vk_club.method('messages.send',
             {'v': '5.131',
-            'user_id': user_id,
-            'random_id': randrange(10 ** 7),
-            'message': f'https://vk.com/id{photo_array[0]["user_id"]} \n{photo_array[0]["message"]}',
-            'attachment': attachment}
+             'user_id': user_id,
+             'random_id': randrange(10 ** 7),
+             'message': f'https://vk.com/id{photo_array[0]["user_id"]} \n{photo_array[0]["message"]}',
+             'attachment': attachment}
         )
 
     @log_decor
@@ -213,52 +152,10 @@ class VK:
     def get_white_list(self, user_id):
         white_list_users = self.db.get_white_list(user_id)
         for white_user in white_list_users:
-            photo_array = vk.get_photos(white_user[0])
-            vk.send_photos(user_id, photo_array)
+            photo_array = self.get_photos(white_user[0])
+            self.send_photos(user_id, photo_array)
 
     @log_decor
     def write_msg(self, user_id, message):
         self.vk_club.method('messages.send', {'user_id': user_id, 'message': message,
                                               'random_id': randrange(10 ** 7),})
-
-
-vk = VK()
-
-for event in vk.longpoll.listen():
-    if event.type == VkEventType.MESSAGE_NEW:
-
-        if event.to_me:
-            request = event.text
-
-            if request.lower() == "привет":
-                vk.write_msg(event.user_id, f"Привет, {vk.get_user_name(event.user_id)}")
-
-                vk.write_msg(event.user_id, f"Введи критерии поиска: \nгород (и страна, если город не в России), \nпол,"
-                                            f"\nсемейное положение, \nвозраст с, \nвозраст до. "
-                                            f"\n\nПример: 'город: Пластуновская, семейное положение: женат'"
-                                            f"\n\nДополнительные команды:"
-                                            f"\n    добавь в белый список"
-                                            f"\n    покажи белый список")
-            elif request.lower() == "подробнее" or request.lower() == "справка":
-                vk.write_msg(event.user_id, f"Возможные значения: \nПол: {list(vk.sex.keys())}"
-                                            f"\nСемейное положение: {list(vk.status.keys())}")
-            elif request.lower() == "добавь в белый список":
-                vk.add_to_white_list(event.user_id)
-                vk.write_msg(event.user_id, 'Добавление в белый список успешно выполнено')
-            elif request.lower() == "покажи белый список":
-                print(vk.get_white_list(event.user_id))
-
-            for key in vk.parameters_dict.keys():
-                if key in request.lower():
-                    input_parameters = vk.parse_parameters(request.lower())
-                    found_user = vk.search_users(event.user_id, **input_parameters)
-                    if found_user == -1:
-                        vk.write_msg(event.user_id, "Пользователи по указанным критериям не найдены")
-                        break
-                    photo_array = vk.get_photos(found_user)
-                    vk.send_photos(event.user_id, photo_array)
-                    break
-            # if request == "пока":
-            #     vk.write_msg(event.user_id, "Пока((")
-            # else:
-            #     vk.write_msg(event.user_id, "Не поняла вашего ответа...")
